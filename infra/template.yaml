@@ -49,13 +49,13 @@ Resources:
               issuer: !Ref Auth0Issuer
               audience:
                 - !Ref Auth0Audience
-        DefaultAuthorizer: NONE
 
   PostsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../microservices/posts-service/target/posts-service-0.0.1-SNAPSHOT-jar-with-dependencies.jar
       Handler: com.twittarep.microservices.posts.PostsHandler::handleRequest
+      Role: arn:aws:iam::624545653355:role/LabRole
       Environment:
         Variables:
           POSTS_DATABASE_NAME: twittarep_posts_service
@@ -66,8 +66,6 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /api/posts
             Method: GET
-            Auth:
-              Authorizer: NONE
         CreatePost:
           Type: HttpApi
           Properties:
@@ -82,6 +80,7 @@ Resources:
     Properties:
       CodeUri: ../microservices/feed-service/target/feed-service-0.0.1-SNAPSHOT-jar-with-dependencies.jar
       Handler: com.twittarep.microservices.feed.FeedHandler::handleRequest
+      Role: arn:aws:iam::624545653355:role/LabRole
       Environment:
         Variables:
           POSTS_DATABASE_NAME: twittarep_posts_service
@@ -92,14 +91,13 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /api/stream
             Method: GET
-            Auth:
-              Authorizer: NONE
 
   UserFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../microservices/user-service/target/user-service-0.0.1-SNAPSHOT-jar-with-dependencies.jar
       Handler: com.twittarep.microservices.user.UserHandler::handleRequest
+      Role: arn:aws:iam::624545653355:role/LabRole
       Events:
         GetMe:
           Type: HttpApi
