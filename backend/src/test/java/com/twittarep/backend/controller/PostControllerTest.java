@@ -74,4 +74,14 @@ class PostControllerTest {
                 .content(objectMapper.writeValueAsString(java.util.Map.of("content", "hello"))))
             .andExpect(status().isForbidden());
     }
+
+    @Test
+    void createPostShouldRejectUnsupportedContentType() throws Exception {
+        mockMvc.perform(post("/api/posts")
+                .with(jwt().jwt(jwt -> jwt.subject("auth0|123").claim("scope", "write:posts")))
+                .contentType(MediaType.TEXT_PLAIN)
+                .content("{\"content\":\"hello\"}"))
+            .andExpect(status().isUnsupportedMediaType())
+            .andExpect(jsonPath("$.message").value("content-type must be application/json"));
+    }
 }

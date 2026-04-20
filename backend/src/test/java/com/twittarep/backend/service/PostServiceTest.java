@@ -1,22 +1,25 @@
 package com.twittarep.backend.service;
 
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.notNull;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import com.twittarep.backend.dto.CreatePostRequest;
 import com.twittarep.backend.model.PostDocument;
 import com.twittarep.backend.repository.PostRepository;
-import java.time.Instant;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class PostServiceTest {
 
     @Mock
@@ -27,8 +30,8 @@ class PostServiceTest {
 
     @Test
     void shouldCreateValidPost() {
-        when(postRepository.save(any(PostDocument.class))).thenAnswer(invocation -> {
-            PostDocument post = invocation.getArgument(0);
+        when(postRepository.save(notNull())).thenAnswer(invocation -> {
+            PostDocument post = invocation.getArgument(0, PostDocument.class);
             post.setId("post-1");
             return post;
         });
@@ -59,5 +62,26 @@ class PostServiceTest {
         assertThatThrownBy(() -> postService.createPost(jwt, new CreatePostRequest("x".repeat(141))))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("140");
+    }
+
+    @Test
+    void shouldRequireAuthenticatedUserToCreatePost() {
+        assertThatThrownBy(() -> postService.createPost(null, new CreatePostRequest("hello")))
+            .isInstanceOf(AuthenticationCredentialsNotFoundException.class)
+            .hasMessageContaining("Authentication required");
+    }
+
+    @Test
+    void shouldRejectNullContent() {
+        Jwt jwt = Jwt.withTokenValue("token")
+            .header("alg", "none")
+            .subject("auth0|123")
+            .issuedAt(Instant.now())
+            .expiresAt(Instant.now().plusSeconds(300))
+            .build();
+
+        assertThatThrownBy(() -> postService.createPost(jwt, new CreatePostRequest(null)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("content is required");
     }
 }

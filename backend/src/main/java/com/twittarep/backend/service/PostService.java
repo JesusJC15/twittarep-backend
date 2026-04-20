@@ -1,16 +1,19 @@
 package com.twittarep.backend.service;
 
+import java.time.Instant;
+import java.util.List;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Service;
+
 import com.twittarep.backend.dto.CreatePostRequest;
 import com.twittarep.backend.dto.PagedResponse;
 import com.twittarep.backend.dto.PostResponse;
 import com.twittarep.backend.model.PostDocument;
 import com.twittarep.backend.repository.PostRepository;
-import java.time.Instant;
-import java.util.List;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.stereotype.Service;
 
 @Service
 public class PostService {
@@ -38,6 +41,13 @@ public class PostService {
     }
 
     public PostResponse createPost(Jwt jwt, CreatePostRequest request) {
+        if (jwt == null || jwt.getSubject() == null || jwt.getSubject().isBlank()) {
+            throw new AuthenticationCredentialsNotFoundException("Authentication required");
+        }
+        if (request == null || request.content() == null) {
+            throw new IllegalArgumentException("content is required");
+        }
+
         String trimmedContent = request.content().trim();
         if (trimmedContent.isBlank()) {
             throw new IllegalArgumentException("content must not be blank");
