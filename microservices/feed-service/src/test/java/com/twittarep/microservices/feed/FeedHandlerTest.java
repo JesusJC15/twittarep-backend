@@ -2,8 +2,8 @@ package com.twittarep.microservices.feed;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -14,11 +14,11 @@ class FeedHandlerTest {
     @Test
     void shouldReturnFeed() {
         FeedHandler handler = new FeedHandler(new FakeFeedRepository());
-        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
-        request.setPath("/api/stream");
+        APIGatewayV2HTTPEvent request = new APIGatewayV2HTTPEvent();
+        request.setRawPath("/api/stream");
         request.setQueryStringParameters(Map.of("page", "0", "size", "20"));
 
-        APIGatewayProxyResponseEvent response = handler.handleRequest(request, null);
+        APIGatewayV2HTTPResponse response = handler.handleRequest(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getBody()).contains("hello");
