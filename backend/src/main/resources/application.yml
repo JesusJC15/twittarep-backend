@@ -6,13 +6,13 @@ spring:
     name: twittarep-backend
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb+srv://saludDeUna_db_user:1ssmxoG49ihDLM5e@saluddeuna.zkppese.mongodb.net/twittarep_backend?retryWrites=true&w=majority&appName=SaludDeUna}
+      uri: ${MONGODB_URI}
       database: ${MONGODB_DATABASE:twittarep_backend}
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${AUTH0_ISSUER_URI:https://twittarep.us.auth0.com/}
+          issuer-uri: ${AUTH0_ISSUER_URI}
 
 management:
   endpoints:
@@ -26,8 +26,8 @@ springdoc:
 
 app:
   security:
-    audience: ${AUTH0_AUDIENCE:https://api.twittarep.com}
+    audience: ${AUTH0_AUDIENCE}
   cors:
     allowed-origins:
-      - ${FRONTEND_LOCAL_ORIGIN:http://localhost:5173}
-      - ${FRONTEND_S3_ORIGIN:https://your-bucket.s3-website-us-east-1.amazonaws.com}
+      - ${FRONTEND_LOCAL_ORIGIN}
+      - ${FRONTEND_S3_ORIGIN}
