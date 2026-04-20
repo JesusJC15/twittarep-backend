@@ -1,0 +1,5 @@
+services:
+  docs-helper:
+    image: mongo:8.0
+    command: ["bash", "-lc", "echo 'Use MongoDB Atlas for runtime data. This container is only for optional local CLI tooling.' && sleep infinity"]
+    profiles: ["tools"]

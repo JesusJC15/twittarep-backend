@@ -1,0 +1,15 @@
+.idea/
+.vscode/
+target/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+.mvn/wrapper/maven-wrapper.jar
+.aws-sam/
+coverage/
+node_modules/
+dist/
+out/
+*.iml

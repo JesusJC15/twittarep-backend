@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: TwittaRep serverless microservices with Auth0-protected endpoints
+
+Parameters:
+  Auth0Issuer:
+    Type: String
+  Auth0Audience:
+    Type: String
+  MongoDbUri:
+    Type: String
+    NoEcho: true
+  FrontendOrigin:
+    Type: String
+
+Globals:
+  Function:
+    Runtime: java21
+    Timeout: 15
+    MemorySize: 1024
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        AUTH0_ISSUER_URI: !Ref Auth0Issuer
+        AUTH0_AUDIENCE: !Ref Auth0Audience
+        MONGODB_URI: !Ref MongoDbUri
+    Tracing: Active
+
+Resources:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref FrontendOrigin
+        AllowHeaders:
+          - Authorization
+          - Content-Type
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+      Auth:
+        Authorizers:
+          Auth0Authorizer:
+            IdentitySource: "$request.header.Authorization"
+            JwtConfiguration:
+              issuer: !Ref Auth0Issuer
+              audience:
+                - !Ref Auth0Audience
+        DefaultAuthorizer: NONE
+
+  PostsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../microservices/posts-service/target/posts-service-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+      Handler: com.twittarep.microservices.posts.PostsHandler::handleRequest
+      Environment:
+        Variables:
+          POSTS_DATABASE_NAME: twittarep_posts_service
+      Events:
+        GetPosts:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /api/posts
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        CreatePost:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /api/posts
+            Method: POST
+            Auth:
+              Authorizer: Auth0Authorizer
+
+  FeedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../microservices/feed-service/target/feed-service-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+      Handler: com.twittarep.microservices.feed.FeedHandler::handleRequest
+      Environment:
+        Variables:
+          POSTS_DATABASE_NAME: twittarep_posts_service
+      Events:
+        GetStream:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /api/stream
+            Method: GET
+            Auth:
+              Authorizer: NONE
+
+  UserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../microservices/user-service/target/user-service-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+      Handler: com.twittarep.microservices.user.UserHandler::handleRequest
+      Events:
+        GetMe:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /api/me
+            Method: GET
+            Auth:
+              Authorizer: Auth0Authorizer
+
+Outputs:
+  HttpApiUrl:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  PostsEndpoint:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/posts"
+  FeedEndpoint:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/stream"
+  MeEndpoint:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/me"
