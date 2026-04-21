@@ -2,19 +2,19 @@ package com.twittarep.microservices.user;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.twittarep.shared.api.ApiGatewayResponses;
 import com.twittarep.shared.auth.RequestAuthorizer;
 import com.twittarep.shared.dto.MeResponse;
 import java.util.List;
 import java.util.Map;
 
-public class UserHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class UserHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
 
     @Override
-    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
-        String path = request.getPath();
+    public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent request, Context context) {
+        String path = request.getRawPath();
         if (!RequestAuthorizer.hasScope(request, "read:profile")) {
             return ApiGatewayResponses.forbidden("Missing required scope read:profile", path);
         }

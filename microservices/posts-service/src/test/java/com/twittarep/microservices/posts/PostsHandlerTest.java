@@ -2,7 +2,7 @@ package com.twittarep.microservices.posts;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -13,23 +13,32 @@ class PostsHandlerTest {
     @Test
     void shouldRejectLongPost() {
         PostsHandler handler = new PostsHandler(new InMemoryPostRepository());
-        APIGatewayProxyRequestEvent request = request("POST", "/api/posts", Map.of(), "{\"content\":\"" + "x".repeat(141) + "\"}");
+        APIGatewayV2HTTPEvent request = request("POST", "/api/posts", Map.of(), "{\"content\":\"" + "x".repeat(141) + "\"}");
 
         var response = handler.handleRequest(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(400);
     }
 
-    private APIGatewayProxyRequestEvent request(String method, String path, Map<String, String> queryParams, String body) {
-        APIGatewayProxyRequestEvent.ProxyRequestContext ctx = new APIGatewayProxyRequestEvent.ProxyRequestContext();
-        ctx.setAuthorizer(Map.of("jwt", Map.of("claims", Map.of(
+    private APIGatewayV2HTTPEvent request(String method, String path, Map<String, String> queryParams, String body) {
+        APIGatewayV2HTTPEvent.RequestContext.Authorizer.JWT jwt = new APIGatewayV2HTTPEvent.RequestContext.Authorizer.JWT();
+        jwt.setClaims(Map.of(
             "sub", "auth0|123",
             "name", "Jane",
             "scope", "write:posts read:profile"
-        ))));
-        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
-        request.setHttpMethod(method);
-        request.setPath(path);
+        ));
+
+        APIGatewayV2HTTPEvent.RequestContext.Authorizer authorizer = new APIGatewayV2HTTPEvent.RequestContext.Authorizer();
+        authorizer.setJwt(jwt);
+        APIGatewayV2HTTPEvent.RequestContext.Http http = new APIGatewayV2HTTPEvent.RequestContext.Http();
+        http.setMethod(method);
+        http.setPath(path);
+        APIGatewayV2HTTPEvent.RequestContext ctx = new APIGatewayV2HTTPEvent.RequestContext();
+        ctx.setAuthorizer(authorizer);
+        ctx.setHttp(http);
+
+        APIGatewayV2HTTPEvent request = new APIGatewayV2HTTPEvent();
+        request.setRawPath(path);
         request.setBody(body);
         request.setQueryStringParameters(queryParams);
         request.setRequestContext(ctx);

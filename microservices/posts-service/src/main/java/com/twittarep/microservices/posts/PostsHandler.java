@@ -2,8 +2,8 @@ package com.twittarep.microservices.posts;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.twittarep.shared.ObjectMapperFactory;
 import com.twittarep.shared.api.ApiGatewayResponses;
 import com.twittarep.shared.auth.RequestAuthorizer;
@@ -15,7 +15,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-public class PostsHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class PostsHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
 
     private final PostRepository repository;
 
@@ -28,9 +28,9 @@ public class PostsHandler implements RequestHandler<APIGatewayProxyRequestEvent,
     }
 
     @Override
-    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
-        String path = request.getPath();
-        String method = request.getHttpMethod();
+    public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent request, Context context) {
+        String path = requestPath(request);
+        String method = requestMethod(request);
         try {
             if ("OPTIONS".equalsIgnoreCase(method)) {
                 return ApiGatewayResponses.ok(Map.of("ok", true));
@@ -49,7 +49,7 @@ public class PostsHandler implements RequestHandler<APIGatewayProxyRequestEvent,
         }
     }
 
-    private APIGatewayProxyResponseEvent handleGet(APIGatewayProxyRequestEvent request) {
+    private APIGatewayV2HTTPResponse handleGet(APIGatewayV2HTTPEvent request) {
         int page = parsePositiveInt(request.getQueryStringParameters(), "page", 0);
         int size = parsePositiveInt(request.getQueryStringParameters(), "size", 20);
         if (size < 1 || size > 100) {
@@ -61,9 +61,9 @@ public class PostsHandler implements RequestHandler<APIGatewayProxyRequestEvent,
         return ApiGatewayResponses.ok(new PagedResponse<>(items, repository.count(), page, size));
     }
 
-    private APIGatewayProxyResponseEvent handleCreate(APIGatewayProxyRequestEvent request) throws IOException {
+    private APIGatewayV2HTTPResponse handleCreate(APIGatewayV2HTTPEvent request) throws IOException {
         if (!RequestAuthorizer.hasScope(request, "write:posts")) {
-            return ApiGatewayResponses.forbidden("Missing required scope write:posts", request.getPath());
+            return ApiGatewayResponses.forbidden("Missing required scope write:posts", requestPath(request));
         }
         CreatePostRequest createPostRequest = ObjectMapperFactory.get().readValue(request.getBody(), CreatePostRequest.class);
         String content = createPostRequest.content() == null ? "" : createPostRequest.content().trim();
@@ -75,7 +75,7 @@ public class PostsHandler implements RequestHandler<APIGatewayProxyRequestEvent,
         }
         String authorId = RequestAuthorizer.subject(request);
         if (authorId == null || authorId.isBlank()) {
-            return ApiGatewayResponses.unauthorized("Missing authenticated user", request.getPath());
+            return ApiGatewayResponses.unauthorized("Missing authenticated user", requestPath(request));
         }
 
         PostDocument document = new PostDocument();
@@ -86,7 +86,7 @@ public class PostsHandler implements RequestHandler<APIGatewayProxyRequestEvent,
         return ApiGatewayResponses.created(toResponse(repository.save(document)));
     }
 
-    private String resolveDisplayName(APIGatewayProxyRequestEvent request) {
+    private String resolveDisplayName(APIGatewayV2HTTPEvent request) {
         Object name = RequestAuthorizer.claims(request).get("name");
         if (name != null && !name.toString().isBlank()) {
             return name.toString();
@@ -111,5 +111,26 @@ public class PostsHandler implements RequestHandler<APIGatewayProxyRequestEvent,
 
     private PostResponse toResponse(PostDocument document) {
         return new PostResponse(document.getId(), document.getContent(), document.getAuthorId(), document.getAuthorDisplayName(), document.getCreatedAt());
+    }
+
+    private String requestPath(APIGatewayV2HTTPEvent request) {
+        if (request.getRawPath() != null && !request.getRawPath().isBlank()) {
+            return request.getRawPath();
+        }
+        if (request.getRequestContext() != null
+            && request.getRequestContext().getHttp() != null
+            && request.getRequestContext().getHttp().getPath() != null) {
+            return request.getRequestContext().getHttp().getPath();
+        }
+        return null;
+    }
+
+    private String requestMethod(APIGatewayV2HTTPEvent request) {
+        if (request.getRequestContext() != null
+            && request.getRequestContext().getHttp() != null
+            && request.getRequestContext().getHttp().getMethod() != null) {
+            return request.getRequestContext().getHttp().getMethod();
+        }
+        return request.getRouteKey();
     }
 }

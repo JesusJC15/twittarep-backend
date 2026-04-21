@@ -2,14 +2,14 @@ package com.twittarep.microservices.feed;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.twittarep.shared.api.ApiGatewayResponses;
 import com.twittarep.shared.dto.PagedResponse;
 import com.twittarep.shared.dto.PostResponse;
 import java.util.List;
 
-public class FeedHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class FeedHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
 
     private final FeedRepository repository;
 
@@ -22,7 +22,7 @@ public class FeedHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
     }
 
     @Override
-    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
+    public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent request, Context context) {
         try {
             int page = parseInt(request.getQueryStringParameters() == null ? null : request.getQueryStringParameters().get("page"), 0);
             int size = parseInt(request.getQueryStringParameters() == null ? null : request.getQueryStringParameters().get("size"), 20);
@@ -34,9 +34,9 @@ public class FeedHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
                 .toList();
             return ApiGatewayResponses.ok(new PagedResponse<>(items, repository.count(), page, size));
         } catch (IllegalArgumentException exception) {
-            return ApiGatewayResponses.badRequest(exception.getMessage(), request.getPath());
+            return ApiGatewayResponses.badRequest(exception.getMessage(), request.getRawPath());
         } catch (Exception exception) {
-            return ApiGatewayResponses.serverError(request.getPath());
+            return ApiGatewayResponses.serverError(request.getRawPath());
         }
     }
 
